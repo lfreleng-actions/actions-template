@@ -5,7 +5,7 @@
 
 # 🛠️ Template Action
 
-This is a template for the other actions in this repository.
+This is a template for the other actions in this Github organisation.
 
 ## actions-template
 
@@ -46,4 +46,4 @@ steps:
 
 ## Implementation Details
 
-## Other Notes
+## Notes
