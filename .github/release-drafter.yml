@@ -65,4 +65,4 @@ template: |
   $CHANGES
 
   ## Links
-  - [Submit bugs/feature requests](https://github.com/lfreleng-actions/actions-template/issues)
+  - [Submit bugs/feature requests](https://github.com/$OWNER/$REPOSITORY/issues)
