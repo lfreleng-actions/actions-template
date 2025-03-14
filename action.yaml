@@ -33,7 +33,7 @@ runs:
           exit 1
         fi
 
-        echo "output=$INPUT" >> "$GITHUB_ENV
-        echo "output=$INPUT" >> "$GITHUB_OUTPUT
+        echo "output=$INPUT" >> "$GITHUB_ENV"
+        echo "output=$INPUT" >> "$GITHUB_OUTPUT"
         echo "Action received a valid input: $INPUT ✅"
         echo "Action received a valid input: $INPUT ✅" >> "$GITHUB_STEP_SUMMARY"
