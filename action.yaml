@@ -8,14 +8,13 @@ description: "Description of action"
 # Any relevant notes/observations can go here
 
 inputs:
-  INPUT:
+  input:
     description: "Description of input"
-    required: false
-    type: string
-    default: "input"
+    required: true
+    type: 'string'
 
 outputs:
-  OUTPUT:
+  output:
     description: "Description of output"
     value: ${{ steps.code.outputs.output }}
 
@@ -27,13 +26,13 @@ runs:
       shell: bash
       run: |
         # Friendly Name
-        INPUT="${{ inputs.input }}"
-        if [ -z "$INPUT" ]; then
-          echo "Error: mandatory input INPUT was not set/configured ❌"
+        input="${{ inputs.input }}"
+        if [ -z "$input" ]; then
+          echo "Error: mandatory input was not set/configured ❌"
           exit 1
         fi
 
-        echo "output=$INPUT" >> "$GITHUB_ENV"
-        echo "output=$INPUT" >> "$GITHUB_OUTPUT"
-        echo "Action received a valid input: $INPUT ✅"
-        echo "Action received a valid input: $INPUT ✅" >> "$GITHUB_STEP_SUMMARY"
+        echo "output=$input" >> "$GITHUB_ENV"
+        echo "output=$input" >> "$GITHUB_OUTPUT"
+        echo "Action received: $input ✅"
+        echo "Action received: $input ✅" >> "$GITHUB_STEP_SUMMARY"
