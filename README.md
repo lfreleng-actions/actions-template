@@ -28,9 +28,9 @@ steps:
 
 <!-- markdownlint-disable MD013 -->
 
-| Variable Name | Required | Description  |
+| Name          | Required | Description  |
 | ------------- | -------- | ------------ |
-| INPUT         | False    | Action input |
+| input         | False    | Action input |
 
 <!-- markdownlint-enable MD013 -->
 
@@ -38,9 +38,9 @@ steps:
 
 <!-- markdownlint-disable MD013 -->
 
-| Variable Name | Description   |
+| Name          | Description   |
 | ------------- | ------------- |
-| OUTPUT        | Action output |
+| output        | Action output |
 
 <!-- markdownlint-enable MD013 -->
 
