@@ -9,7 +9,6 @@ on:
   push:
     branches:
       - main
-      - master
   # pull_request is required for autolabeler
   pull_request:
     types:
@@ -29,26 +28,9 @@ concurrency:
   # yamllint disable-line rule:line-length
   group: "rd-${{ github.event_name }}-${{ github.event.number }}-${{ github.ref }}"
   cancel-in-progress: true
+  # yamllint enable rule:line-length
 
 jobs:
-  show_concurrency_group:
-    name: 'Concurrency Group'
-    runs-on: 'ubuntu-latest'
-    timeout-minutes: 2
-    steps:
-      - name: 'Concurrency Group'
-        shell: bash
-        # yamllint disable rule:line-length
-        run: |
-          # Concurrency Group
-          echo "Concurrency group: rd-${{ github.event_name }}-${{ github.event.number }}-${{ github.ref }}"
-          # shellcheck disable=SC2129
-          echo "## Release Drafter" \
-            >> "$GITHUB_STEP_SUMMARY"
-          echo "Concurrency group: rd-${{ github.event_name }}-${{ github.event.number }}-${{ github.ref }}" \
-            >> "$GITHUB_STEP_SUMMARY"
-
-  # yamllint enable rule:line-length
   update_release_draft:
     name: 'Update Release Draft'
     permissions:
@@ -58,14 +40,25 @@ jobs:
       pull-requests: write
     runs-on: 'ubuntu-latest'
     timeout-minutes: 3
+    # yamllint disable rule:line-length
     steps:
       # Harden the runner used by this workflow
-      # yamllint disable-line rule:line-length
       - uses: step-security/harden-runner@ec9f2d5744a09debf3a187a3f4f675c53b671911 # v2.13.0
         with:
           egress-policy: 'audit'
 
-      # yamllint disable-line rule:line-length
-      - uses: release-drafter/release-drafter@b1476f6e6eb133afa41ed8589daba6dc69b4d3f5 # v6.1.0
+      - name: 'Show concurrency group'
+        shell: bash
+        # yamllint disable rule:line-length
+        run: |
+          # Show concurrency group
+          {
+            echo '## Release Drafter'
+            echo "Concurrency group: rd-${{ github.event_name }}-${{ github.event.number }}-${{ github.ref }}"
+          } >> "GITHUB_SUMMARY_STEP"
+          echo "Concurrency group: rd-${{ github.event_name }}-${{ github.event.number }}-${{ github.ref }}"
+
+      - name: 'Update draft release'
+        uses: release-drafter/release-drafter@b1476f6e6eb133afa41ed8589daba6dc69b4d3f5 # v6.1.0
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
