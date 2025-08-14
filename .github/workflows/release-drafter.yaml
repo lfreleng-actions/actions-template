@@ -28,7 +28,6 @@ concurrency:
   # yamllint disable-line rule:line-length
   group: "rd-${{ github.event_name }}-${{ github.event.number }}-${{ github.ref }}"
   cancel-in-progress: true
-  # yamllint enable rule:line-length
 
 jobs:
   update_release_draft:
