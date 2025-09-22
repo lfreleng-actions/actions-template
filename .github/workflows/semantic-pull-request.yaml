@@ -14,7 +14,7 @@ on:
 permissions: {}
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: "${{ github.workflow }}-${{ github.ref }}"
   cancel-in-progress: true
 
 jobs:
@@ -22,7 +22,7 @@ jobs:
     name: "Semantic Pull Request"
     permissions:
       contents: read
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
       # Harden the runner used by this workflow
