@@ -112,3 +112,8 @@ repos:
         types:
           - yaml
       - id: check-readthedocs
+
+  - repo: https://github.com/modeseven-lfit/gha-workflow-linter
+    rev: d02f6bc01fb6e21db53245af15a1fe5c6acaf73b  # frozen: v0.1.2
+    hooks:
+      - id: gha-workflow-linter
