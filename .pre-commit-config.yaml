@@ -104,7 +104,6 @@ repos:
     rev: 100fffb1dffb802767871aae69687b165e4bf782  # frozen: v0.1.13
     hooks:
       - id: gha-workflow-linter
-        args: [lint, .github/workflows/, --verbose]
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
     rev: b035497fb64e3f9faa91e833331688cc185891e6  # frozen: 0.36.0
