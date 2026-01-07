@@ -16,8 +16,6 @@ permissions: {}
 jobs:
   promote-release:
     name: 'Promote Draft Release'
-    # yamllint disable-line rule:line-length
-    if: github.ref_type == 'tag'
     runs-on: 'ubuntu-latest'
     permissions:
       contents: write
