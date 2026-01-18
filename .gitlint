@@ -11,6 +11,10 @@
 # precedence over this
 # verbosity = 2
 
+# Use 'search' semantics for regex matching (match anywhere in line)
+# instead of 'match' semantics (match from beginning)
+regex-style-search=True
+
 # By default gitlint will ignore merge commits. Set to 'false' to disable.
 # ignore-merge-commits=true
 
