@@ -44,6 +44,7 @@ repos:
     rev: acc9d9de6369b76d22cb4167029d2035e8730b98 # frozen: v0.19.1
     hooks:
       - id: gitlint
+        stages: [commit-msg]
 
   - repo: https://github.com/adrienverge/yamllint.git
     rev: 79a6b2b1392eaf49cdd32ac4f14be1a809bbd8f7  # frozen: v1.37.1
@@ -64,6 +65,13 @@ repos:
     rev: a66e98df7b4aeeb3724184b332785976d062b92e  # frozen: v1.19.1
     hooks:
       - id: mypy
+
+  # Mirror repo required for pre-commit integration
+  # (main repo lacks .pre-commit-hooks.yaml)
+  - repo: https://github.com/DetachHead/basedpyright-prek-mirror
+    rev: afea75d07514dec0c64177659a8e82827769dc99  # frozen: 1.37.1
+    hooks:
+      - id: basedpyright
 
   - repo: https://github.com/btford/write-good
     rev: ab66ce10136dfad5146e69e70f82a3efac8842c1 # frozen: v1.0.8
