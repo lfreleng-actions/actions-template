@@ -100,6 +100,12 @@ repos:
     hooks:
       - id: codespell
 
+  # Requires a mirror, primary repo lacks .pre-commit-hooks.yaml
+  - repo: https://github.com/DetachHead/basedpyright-prek-mirror
+    rev: afea75d07514dec0c64177659a8e82827769dc99  # frozen: v1.37.1
+    hooks:
+      - id: basedpyright
+
   - repo: https://github.com/lfreleng-actions/gha-workflow-linter
     rev: b0b2dbd97ea48bc1154a7c807e8ad3bc28f241b5  # frozen: v0.1.14
     hooks:
