@@ -52,7 +52,7 @@ repos:
         types: [yaml]
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: 45ef068da5f21267bb2a7ec4a623092959f09ce5  # frozen: v0.14.14
+    rev: 0470f7c8a653e950f7cc5a653204ceb3fde4c02a  # frozen: v0.15.0
     hooks:
       - id: ruff
         files: ^(scripts|tests|custom_components)/.+\.py$
@@ -102,7 +102,7 @@ repos:
 
   # Requires a mirror, primary repo lacks .pre-commit-hooks.yaml
   - repo: https://github.com/DetachHead/basedpyright-prek-mirror
-    rev: 5c95b305c8627366ba1333522ccbb6be49e1068c  # frozen: 1.37.3
+    rev: 51249f052c7c288dcd0f7cc977557d96808c3455  # frozen: 1.37.4
     hooks:
       - id: basedpyright
 
