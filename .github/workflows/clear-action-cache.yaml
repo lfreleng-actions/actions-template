@@ -48,7 +48,6 @@ jobs:
     permissions:
       # Actions cache deletion requires the actions: write scope.
       actions: write
-      contents: read
     steps:
       # Harden the runner
       # yamllint disable-line rule:line-length
@@ -131,17 +130,37 @@ jobs:
             echo "|----------|-------|"
             echo "| Total entries | $before_count |"
             echo "| Matched | $matched_count |"
-            echo "| Key filter | \`${KEY_PATTERN:-<none>}\` |"
-            echo "| Ref filter | \`${REF_FILTER:-<none>}\` |"
             echo "| Dry run | \`${{ inputs.dry_run }}\` |"
+            echo ""
+            # Render user-controlled filter inputs inside a fenced
+            # code block. KEY_PATTERN and REF_FILTER are free-form
+            # workflow_dispatch inputs and may contain characters
+            # (|, backticks, newlines) that would break table
+            # rendering or inject markup into the step summary.
+            # jq @json safely quotes/escapes the values.
+            echo "### Filters"
+            echo ""
+            echo '```text'
+            jq -nr \
+              --arg key "${KEY_PATTERN:-}" \
+              --arg ref "${REF_FILTER:-}" \
+              '"key_pattern=\($key|@json)\nref_filter=\($ref|@json)"'
+            echo '```'
             echo ""
             if [ "$matched_count" -gt 0 ]; then
               echo "### Matched entries"
               echo ""
-              echo "| ID | Size (bytes) | Ref | Key |"
-              echo "|----|--------------|-----|-----|"
-              printf '%s\n' "$filtered" | jq -r \
-                '"| \(.id) | \(.size_in_bytes) | \(.ref) | \(.key) |"'
+              # Emit as a fenced code block rather than a Markdown
+              # table: cache keys and refs are user-controlled and
+              # may contain characters (|, backticks, newlines) that
+              # would otherwise break table rendering or allow
+              # injection into the step summary.
+              echo '```text'
+              printf '%s\n' "$filtered" | jq -r '
+                  "id=\(.id)  size=\(.size_in_bytes)B  " +
+                  "ref=\(.ref|tojson)  key=\(.key|tojson)"
+                '
+              echo '```'
               echo ""
             fi
           } >> "$GITHUB_STEP_SUMMARY"
