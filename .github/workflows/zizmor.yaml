@@ -12,6 +12,40 @@
 #   - Advisory: zizmor exits 0 in SARIF mode, so this workflow does NOT
 #     block merges. Code-scanning alerts can be made blocking later via
 #     a code-scanning ruleset once the existing backlog is resolved.
+#
+# Deployment note (REVIEWERS / COPILOT: please verify):
+#   This workflow resolves its zizmor version pin in one of two ways
+#   (see the pin-resolution comment in the audit job below):
+#
+#     * If the repository carries a LOCAL pin file at
+#       .github/dependabot/zizmor-requirements.txt, that file MUST be
+#       paired with a `pip` ecosystem entry in .github/dependabot.yml,
+#       scoped to /.github/dependabot AND restricted to direct
+#       dependencies:
+#
+#         - package-ecosystem: 'pip'
+#           directory: '/.github/dependabot'
+#           schedule:
+#             interval: 'weekly'
+#           allow:
+#             - dependency-type: 'direct'
+#
+#       The `allow: direct` filter is mandatory: the pin file is read
+#       by grep at run-time and never installed, so there is no
+#       lockfile. Without the filter Dependabot fails the pip job with
+#       "can't update vulnerable dependencies without a lockfile" the
+#       moment a transitive of zizmor carries a security advisory, and
+#       the failure is only visible in the GitHub Dependabot UI.
+#
+#     * If the repository has NO local pin file, the workflow fetches
+#       the canonical pin from lfreleng-actions/.github at run-time and
+#       NO dependabot.yml entry is required (adding one would error,
+#       as there is no local manifest for Dependabot to track).
+#
+#   When reviewing a PR that adds or copies this workflow, confirm the
+#   dependabot.yml state matches whichever mode the repository uses.
+#   This template ships the local pin file, so its own dependabot.yml
+#   carries the `pip` entry above.
 
 name: '🌈 Zizmor Scan'
 
@@ -86,15 +120,21 @@ jobs:
           set -euo pipefail
           sarif="${GITHUB_WORKSPACE}/zizmor.sarif"
           tmp_sarif="$(mktemp -t zizmor.XXXXXX.sarif)"
-          # The zizmor version pin lives in
-          #   .github/dependabot/zizmor-requirements.txt
-          # and is kept current by Dependabot's pip ecosystem. Prefer
-          # a workspace copy when one exists (so the audited repo can
-          # carry its own pin and test pin changes via PR); otherwise
-          # fall back to fetching the file from the canonical
-          # org-wide location on the `main` branch of
-          # lfreleng-actions/.github. Either way the workflow itself
-          # stays free of a static version string.
+          # The zizmor version pin is resolved at runtime so the
+          # workflow file itself stays free of a static version
+          # string. Resolution order:
+          #
+          #   1. A workspace file at
+          #      .github/dependabot/zizmor-requirements.txt
+          #      if the audited repo carries one (optional; lets
+          #      that repo override the org-wide pin and test pin
+          #      changes via PR).
+          #   2. Otherwise fetch the canonical pin from the `main`
+          #      branch of lfreleng-actions/.github, where it is
+          #      kept current by Dependabot's pip ecosystem.
+          #
+          # Most consuming repos will not have the workspace file
+          # and will use the remote fallback.
           local_pin_file='.github/dependabot/zizmor-requirements.txt'
           if [ -f "${local_pin_file}" ]; then
             pin_file="${local_pin_file}"
@@ -143,16 +183,17 @@ jobs:
         # top findings so they surface as inline PR annotations.
         # Stdlib-only: no pip install, no extra dependencies.
         #
-        # The Python parser is embedded as base64 so it can be
-        # invoked without checking a script into the audited
-        # repository (this workflow runs as a required workflow
-        # across many repositories that do not contain it). Edit the
-        # source at .github/scripts/zizmor_summary.py and regenerate
-        # the embedded copy by running:
-        #
-        #   python3 .github/scripts/zizmor_summary.py --regen-workflow
-        #
-        # then commit both files together.
+        # The Python parser is embedded as base64 so this workflow
+        # is self-contained: it runs as a required workflow across
+        # many repositories that do not (and should not need to)
+        # carry the script. The canonical source of both this
+        # workflow and the parser lives in the
+        # lfreleng-actions/actions-template repository at
+        # .github/scripts/zizmor_summary.py; the embedded copy there
+        # is regenerated from the script via
+        # `python3 .github/scripts/zizmor_summary.py --regen-workflow`
+        # and the refreshed workflow is then propagated to consuming
+        # repositories.
         if: >-
           always()
           && steps.zizmor.outcome == 'success'
