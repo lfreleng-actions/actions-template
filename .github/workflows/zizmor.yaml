@@ -12,6 +12,40 @@
 #   - Advisory: zizmor exits 0 in SARIF mode, so this workflow does NOT
 #     block merges. Code-scanning alerts can be made blocking later via
 #     a code-scanning ruleset once the existing backlog is resolved.
+#
+# Deployment note (REVIEWERS / COPILOT: please verify):
+#   This workflow resolves its zizmor version pin in one of two ways
+#   (see the pin-resolution comment in the audit job below):
+#
+#     * If the repository carries a LOCAL pin file at
+#       .github/dependabot/zizmor-requirements.txt, that file MUST be
+#       paired with a `pip` ecosystem entry in .github/dependabot.yml,
+#       scoped to /.github/dependabot AND restricted to direct
+#       dependencies:
+#
+#         - package-ecosystem: 'pip'
+#           directory: '/.github/dependabot'
+#           schedule:
+#             interval: 'weekly'
+#           allow:
+#             - dependency-type: 'direct'
+#
+#       The `allow: direct` filter is mandatory: the pin file is read
+#       by grep at run-time and never installed, so there is no
+#       lockfile. Without the filter Dependabot fails the pip job with
+#       "can't update vulnerable dependencies without a lockfile" the
+#       moment a transitive of zizmor carries a security advisory, and
+#       the failure is only visible in the GitHub Dependabot UI.
+#
+#     * If the repository has NO local pin file, the workflow fetches
+#       the canonical pin from lfreleng-actions/.github at run-time and
+#       NO dependabot.yml entry is required (adding one would error,
+#       as there is no local manifest for Dependabot to track).
+#
+#   When reviewing a PR that adds or copies this workflow, confirm the
+#   dependabot.yml state matches whichever mode the repository uses.
+#   This template ships the local pin file, so its own dependabot.yml
+#   carries the `pip` entry above.
 
 name: '🌈 Zizmor Scan'
 
