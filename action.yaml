@@ -23,15 +23,24 @@ runs:
     - name: "Friendly Name"
       id: code
       shell: bash
+      env:
+        INPUT_VALUE: ${{ inputs.input }}
       run: |
         # Friendly Name
-        input="${{ inputs.input }}"
+        input="$INPUT_VALUE"
         if [ -z "$input" ]; then
           echo "Error: mandatory input was not set/configured ❌"
           exit 1
         fi
 
-        echo "output=$input" >> "$GITHUB_ENV"
-        echo "output=$input" >> "$GITHUB_OUTPUT"
+        # Write the output using the multiline heredoc format with a random
+        # delimiter so that an input containing newlines cannot inject
+        # additional keys into $GITHUB_OUTPUT (output-file injection).
+        delimiter="ghadelim_$(openssl rand -hex 16 2>/dev/null || date +%s%N)"
+        {
+          printf '%s<<%s\n' 'output' "$delimiter"
+          printf '%s\n' "$input"
+          printf '%s\n' "$delimiter"
+        } >> "$GITHUB_OUTPUT"
         echo "Action received: $input ✅"
         echo "Action received: $input ✅" >> "$GITHUB_STEP_SUMMARY"
