@@ -57,7 +57,7 @@ jobs:
       - name: 'Verify pushed tag'
         id: tag_validate
         # yamllint disable-line rule:line-length
-        uses: lfreleng-actions/tag-validate-action@bc8043ec074495cc8cdf351623ebab3675d563cf  # v1.0.4
+        uses: lfreleng-actions/tag-validate-action@aeca49ae6d1e87184477d803d30c4fa68777d814  # v1.1.0
         with:
           token: "${{ secrets.GITHUB_TOKEN }}"
           require_type: 'semver'
@@ -65,6 +65,18 @@ jobs:
           require_github: 'true'
           # yamllint disable-line rule:line-length
           require_signed: 'ssh,gpg-unverifiable'  # Cannot verify GPG without key
+          # Block stale/lower-value tags (e.g. pushed from an
+          # out-of-sync fork) from triggering release promotion
+          enforce_increment: 'true'
+          # Tag commit must be reachable from the default branch
+          require_branch: "${{ github.event.repository.default_branch }}"
+          # Tag object must have been created within the last three
+          # minutes; blocks accidental pushes of old (test) tags that
+          # would otherwise create faulty immutable releases
+          require_recent: 'true'
+          # Tag must point at the current tip of the default branch;
+          # blocks releases built from outdated commit SHAs
+          require_latest: 'true'
 
   promote_release:
     name: 'Promote Draft Release'
