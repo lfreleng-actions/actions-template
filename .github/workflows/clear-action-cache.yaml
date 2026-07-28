@@ -305,6 +305,9 @@ jobs:
             echo "| Total entries | $after_count |"
             echo "| Remaining matches | $remaining_matches |"
             echo ""
+            echo "Remaining matches counts every entry matching the"
+            echo "filters, including any created after this run began."
+            echo ""
           } >> "$GITHUB_STEP_SUMMARY"
 
           if [ "$DRY_RUN" = "true" ]; then
@@ -312,9 +315,60 @@ jobs:
             exit 0
           fi
 
-          if [ "$remaining_matches" -ne 0 ]; then
-            echo "::error::Expected zero matching cache entries " \
-              "after deletion, found $remaining_matches"
+          # Deletion targets the entries matched in the snapshot taken
+          # before it ran. Other workflows can save caches while this one
+          # is working, and a new entry may match the same filters, so a
+          # remaining-match count of zero is not a safe success
+          # condition: it turns an unrelated concurrent cache into a
+          # spurious failure. Assert instead that each entry actually
+          # targeted has gone, which is the guarantee this job owes its
+          # caller. The count above stays in the summary as information.
+          surviving_ids=''
+          if [ -s matched_ids.txt ] && [ -n "$all_caches" ]; then
+            # A blank line becomes an empty grep pattern, which matches
+            # every remaining ID and would invent survivors, so drop
+            # them before using the file as a pattern list. grep exits 1
+            # if that leaves nothing, which is fine, but a higher status
+            # is a genuine failure (unreadable file, bad usage). A
+            # blanket `|| true` would swallow those and let this step
+            # report success without having verified anything.
+            status=0
+            grep -v '^[[:space:]]*$' matched_ids.txt \
+              > targeted_ids.txt || status=$?
+            if [ "$status" -gt 1 ]; then
+              echo "::error::Could not read matched cache IDs" \
+                "(grep exit $status)"
+              exit 1
+            fi
+            if [ -s targeted_ids.txt ]; then
+              # Intersect in a single pass. Testing each targeted ID
+              # separately would re-scan the remaining list, and spawn a
+              # process, once per entry. jq runs on its own so `set -e`
+              # catches its failures: piped straight into grep, a jq
+              # error would hide behind grep's rightmost exit 1.
+              remaining_ids=$(printf '%s\n' "$all_caches" | jq -r '.id')
+              status=0
+              surviving_ids=$(
+                printf '%s\n' "$remaining_ids" \
+                  | grep -Fxf targeted_ids.txt
+              ) || status=$?
+              if [ "$status" -gt 1 ]; then
+                echo "::error::Could not compare remaining cache IDs" \
+                  "(grep exit $status)"
+                exit 1
+              fi
+            fi
+          fi
+
+          if [ -n "$surviving_ids" ]; then
+            printf '%s\n' "$surviving_ids" | while IFS= read -r cache_id; do
+              echo "::error::Cache entry $cache_id still present"
+            done
+            survivors=$(
+              printf '%s\n' "$surviving_ids" | wc -l | tr -d '[:space:]'
+            )
+            echo "::error::$survivors targeted cache entr(y/ies)" \
+              "survived deletion"
             exit 1
           fi
 
