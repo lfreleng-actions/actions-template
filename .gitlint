@@ -27,6 +27,11 @@
 # See http://jorisroovers.github.io/gitlint/user_defined_rules for details
 # extra-path=examples/
 
+# Opt in to 'search' regex semantics ahead of gitlint making them the
+# default. Only [ignore-body-lines] sets a regex here, and its pattern
+# already matches anywhere in the line, so behaviour is unchanged.
+regex-style-search=true
+
 contrib=contrib-title-conventional-commits,contrib-body-requires-signed-off-by
 
 # Subject line limit from the seven rules of a great commit message.
