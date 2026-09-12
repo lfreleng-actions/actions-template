@@ -9,11 +9,11 @@ ci:
   # (dependency audits), so it cannot run in the sandbox either.
   skip: [gha-workflow-linter, aislop]
   autofix_commit_msg: |
-    Chore: pre-commit autofixes
+    Chore: Pre-commit autofixes
 
     Signed-off-by: pre-commit-ci[bot] <pre-commit-ci@users.noreply.github.com>
   autoupdate_commit_msg: |
-    Chore: pre-commit autoupdate
+    Chore: Pre-commit autoupdate
 
     Signed-off-by: pre-commit-ci[bot] <pre-commit-ci@users.noreply.github.com>
 
