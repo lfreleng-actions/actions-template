@@ -29,6 +29,16 @@
 
 contrib=contrib-title-conventional-commits,contrib-body-requires-signed-off-by
 
+# Subject line limit from the seven rules of a great commit message.
+# Overrides the gitlint default of 72.
+[title-max-length]
+line-length=50
+
+# Body wrap limit from the same source. Overrides the gitlint default
+# of 80. Lines containing URLs are exempted by [ignore-body-lines].
+[body-max-line-length]
+line-length=72
+
 [contrib-title-conventional-commits]
 types=Fix,Feat,Chore,Docs,Style,Refactor,Perf,Test,Revert,CI,Build
 
