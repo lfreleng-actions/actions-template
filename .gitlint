@@ -39,6 +39,21 @@ contrib=contrib-title-conventional-commits,contrib-body-requires-signed-off-by
 [title-max-length]
 line-length=50
 
+# Require a capital letter both at the start of the title and at the
+# start of the description after the colon. The type itself is already
+# validated by [contrib-title-conventional-commits]; this rule
+# deliberately does not repeat the type list, so adding a type there
+# needs no change here.
+#
+# The leading anchor is required: regex-style-search above selects
+# 'search' semantics, so an unanchored pattern would match anywhere in
+# the title and never fail.
+#
+# Merge, revert, fixup and squash commits are exempt via the
+# ignore-*-commits defaults, so generated subjects are unaffected.
+[title-match-regex]
+regex=^[A-Z][a-zA-Z]*(\([^)]+\))?: [A-Z]
+
 # Body wrap limit from the same source. Overrides the gitlint default
 # of 80. Lines containing URLs are exempted by [ignore-body-lines].
 [body-max-line-length]
