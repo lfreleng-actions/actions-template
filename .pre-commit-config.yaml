@@ -49,6 +49,21 @@ repos:
           - --branch=rc
           - --branch=production
 
+  # Block credentials before they reach a commit. Scans staged content
+  # rather than paths, so it also catches secrets in files that no
+  # .gitignore rule covers. Guards new commits only; it does not scan
+  # existing history.
+  #
+  # always_run is required: the hook reads the staged index directly, but
+  # pre-commit still gates invocation on the file classifier, so the
+  # top-level exclude above would otherwise skip scanning entirely on a
+  # commit that touches only excluded paths.
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: 83d9cd684c87d95d656c1458ef04895a7f1cbd8e  # frozen: v8.30.1
+    hooks:
+      - id: gitleaks
+        always_run: true
+
   - repo: https://github.com/jorisroovers/gitlint
     rev: acc9d9de6369b76d22cb4167029d2035e8730b98  # frozen: v0.19.1
     hooks:
