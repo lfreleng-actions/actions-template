@@ -59,7 +59,7 @@ jobs:
           echo "Testing setup step/summary output" >> "$GITHUB_STEP_SUMMARY"
 
       - name: "Running local action: ${{ github.repository }}"
-        uses: ./
+        uses: $/
         with:
           input: "test input 💬"
 
@@ -74,7 +74,7 @@ jobs:
 
       # yamllint disable-line rule:line-length
       - name: "Running local action: ${{ github.repository }} [Override Failure]"
-        uses: ./
+        uses: $/
         id: failure
         continue-on-error: true
         with:
