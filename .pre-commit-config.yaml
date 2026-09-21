@@ -7,7 +7,44 @@ ci:
   # pre-commit.ci sandbox prevents network calls; disable gha-workflow-linter.
   # aislop also runs engines that can call the network at scan time
   # (dependency audits), so it cannot run in the sandbox either.
-  skip: [gha-workflow-linter, aislop]
+  #
+  # The Go hooks below use language: system and need a Go toolchain plus
+  # golangci-lint on PATH; the eslint hook needs the project's own
+  # node_modules. The sandbox provides none of these, so they are skipped
+  # here.
+  #
+  # They remain inert in repositories without Go or JavaScript, all five
+  # using the same pattern: always_run, so a commit deleting sources
+  # still triggers them, with an early guard on the project manifest.
+  #
+  # Each guard has two branches. With no manifest and no tracked sources
+  # of that language the hook exits 0 without invoking any toolchain.
+  # With no manifest but sources still tracked it FAILS, because that
+  # state means go.mod or package.json was deleted and every check for
+  # that language would otherwise fall silent against a live tree.
+  #
+  # A 'files' matcher would look equivalent and be materially weaker:
+  # pre-commit drops deleted paths before matching, so a commit that only
+  # removes sources would run nothing at all.
+  #
+  # Note that skipping them leaves these checks developer-side only. No
+  # reusable workflow currently runs them: go-audit-action covers
+  # govulncheck, gosec and staticcheck, which is a security audit rather
+  # than a lint, and of the organisation's Go repositories only
+  # version-extract-action invokes anything equivalent from a workflow.
+  # Server-side enforcement for hooks the sandbox cannot run is tracked in
+  # lfreleng-actions/.github#179, which proposes a generic-workflows
+  # linting workflow that installs project dependencies first. Until that
+  # lands, treat this list as a known enforcement gap and not as a
+  # delegation to some workflow that already exists.
+  skip:
+    - gha-workflow-linter
+    - aislop
+    - eslint
+    - go-fmt
+    - go-vet
+    - go-mod-tidy
+    - golangci-lint
   autofix_commit_msg: |
     Chore: Pre-commit autofixes
 
@@ -153,6 +190,128 @@ repos:
         additional_dependencies: ["aislop@0.13.1"]
         pass_filenames: false
         always_run: true
+
+  # JavaScript/TypeScript linting.
+  #
+  # Repository-wide with a package.json guard, mirroring the Go hooks
+  # below, rather than scoped by 'files'. The guard fails when the
+  # manifest is absent but lintable sources are still tracked, so
+  # deleting package.json cannot silently disable linting; the shipped
+  # config and ESLint's generated paths are excluded from that check so
+  # this template, whose only tracked JavaScript file is the seed config,
+  # stays inert.
+  #
+  # eslint.config.mjs is deliberately not hidden from the hook. Linting it
+  # necessarily loads it, so a syntax error, missing plugin or invalid
+  # rule in the config fails on the commit that introduces it rather than
+  # surviving until the next source change.
+  #
+  # A local hook rather than pre-commit/mirrors-eslint. The mirror installs
+  # plugins into an isolated environment, and a flat config at the
+  # repository root cannot resolve ESM imports from it -- 'Cannot find
+  # package typescript-eslint' -- because flat config resolves plugins
+  # relative to itself. Running the project's own ESLint keeps plugin
+  # resolution working and keeps versions declared once, in package.json,
+  # instead of duplicated here.
+  #
+  # Consequently this needs node_modules present, which the pre-commit.ci
+  # sandbox does not install, so it appears in the ci.skip list above.
+  - repo: local
+    hooks:
+      - id: eslint
+        name: eslint
+        # Guards the ESLint major version before linting. 'npx
+        # --no-install' runs whatever the repository already depends on,
+        # and flat config is only the default from ESLint 9 onwards. On
+        # ESLint 8 -- still pinned in release-assets-action -- this config
+        # would be ignored silently in favour of a legacy .eslintrc, so
+        # the baseline would appear to be enforced while doing nothing.
+        # Fail loudly instead.
+        #
+        # ESLINT_USE_FLAT_CONFIG is forced to true for the invocation
+        # rather than left to the environment. ESLint 9 still honours a
+        # value of false by reverting to .eslintrc loading, so an ambient
+        # setting inherited from a shell or CI image could otherwise
+        # bypass this baseline while the hook reported success.
+        #
+        # There is no escape hatch for ESLint 8. It would have to be
+        # bounded to 8.57 and newer, because 8.0 to 8.56 cannot discover
+        # an eslint.config.mjs filename and 7 has no flat config at all,
+        # and encoding that range here means parsing minor versions in an
+        # already dense shell fragment. ESLint 8 is end-of-life and the
+        # rollout upgrades the one repository still on it, so requiring 9
+        # removes the whole class of partial support instead.
+        # yamllint disable-line rule:line-length
+        entry: bash -c 'if [ ! -f package.json ]; then git ls-files -- "*.js" "*.jsx" "*.mjs" "*.cjs" "*.ts" "*.tsx" "*.mts" "*.cts" | grep -vE "(^|/)(dist|build|coverage|node_modules)/|(^|/)eslint[.]config[.](m|c)?js$" | grep -q . && { echo "package.json is missing but JavaScript/TypeScript sources are still tracked - restore it" >&2; exit 1; }; exit 0; fi; v=$(npx --no-install eslint --version 2>/dev/null | sed "s/^v//; s/[.].*$//"); if [ -z "$v" ]; then echo "eslint not installed - add eslint >=9 to devDependencies" >&2; exit 1; fi; if [ "$v" -lt 9 ]; then echo "eslint $v cannot load a flat config reliably - upgrade to >=9" >&2; exit 1; fi; ESLINT_USE_FLAT_CONFIG=true npx --no-install eslint --fix .'
+        language: system
+        always_run: true
+        pass_filenames: false
+
+  # Go toolchain checks.
+  #
+  # These are repository-wide rather than per-file, so they use
+  # always_run with a go.mod guard instead of a 'files' matcher. A
+  # 'files' matcher looks equivalent but silently misses the case that
+  # matters most: pre-commit drops deleted paths before matching, so a
+  # commit that only removes .go files would skip every check here and
+  # could leave stale module requirements or broken packages behind.
+  #
+  # The guard keys on go.mod, which is the honest test of "is this a Go
+  # project". In a repository without one each hook exits 0 immediately,
+  # so the block stays inert and the toolchain is never required.
+  #
+  # Order is deliberate and each step depends on the one before:
+  #   fmt   -- goimports adds and removes imports, changing what the
+  #            module graph needs
+  #   tidy  -- reconciles go.mod/go.sum with the imports fmt settled on
+  #   vet   -- analysis against a synchronised module graph
+  #   lint  -- golangci-lint last, seeing formatted, tidied sources
+  # Reordering these makes the run fail on its first pass and only
+  # succeed when repeated.
+  #
+  # language: system is deliberate. Pinning a Go toolchain per hook would
+  # duplicate the version already declared in go.mod and drift from it;
+  # using the installed toolchain keeps one source of truth. The cost is
+  # that these cannot run in the pre-commit.ci sandbox, hence the ci.skip
+  # entries above.
+  #
+  # golangci-lint fails loudly when absent rather than passing silently: a
+  # linter that quietly does nothing is worse than one that is missing.
+  - repo: local
+    hooks:
+      - id: go-fmt
+        name: go format (gofmt + goimports)
+        # 'golangci-lint run' reports formatter differences but does not
+        # apply them; 'fmt' applies every formatter enabled in
+        # .golangci.yml. Running plain gofmt here would leave goimports
+        # differences unfixed and fail the lint hook below with nothing
+        # able to correct them.
+        # yamllint disable-line rule:line-length
+        entry: bash -c 'if [ ! -f go.mod ]; then git ls-files -- "*.go" | grep -q . && { echo "go.mod is missing but Go sources are still tracked - restore it" >&2; exit 1; }; exit 0; fi; command -v golangci-lint >/dev/null 2>&1 || { echo "golangci-lint not installed - see https://golangci-lint.run/welcome/install/" >&2; exit 1; }; golangci-lint fmt'
+        language: system
+        always_run: true
+        pass_filenames: false
+      - id: go-mod-tidy
+        name: go mod tidy
+        # yamllint disable-line rule:line-length
+        entry: bash -c 'if [ ! -f go.mod ]; then git ls-files -- "*.go" | grep -q . && { echo "go.mod is missing but Go sources are still tracked - restore it" >&2; exit 1; }; exit 0; fi; go mod tidy'
+        language: system
+        always_run: true
+        pass_filenames: false
+      - id: go-vet
+        name: go vet
+        # yamllint disable-line rule:line-length
+        entry: bash -c 'if [ ! -f go.mod ]; then git ls-files -- "*.go" | grep -q . && { echo "go.mod is missing but Go sources are still tracked - restore it" >&2; exit 1; }; exit 0; fi; go vet ./...'
+        language: system
+        always_run: true
+        pass_filenames: false
+      - id: golangci-lint
+        name: golangci-lint
+        # yamllint disable-line rule:line-length
+        entry: bash -c 'if [ ! -f go.mod ]; then git ls-files -- "*.go" | grep -q . && { echo "go.mod is missing but Go sources are still tracked - restore it" >&2; exit 1; }; exit 0; fi; command -v golangci-lint >/dev/null 2>&1 || { echo "golangci-lint not installed - see https://golangci-lint.run/welcome/install/" >&2; exit 1; }; golangci-lint run --timeout=5m'
+        language: system
+        always_run: true
+        pass_filenames: false
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
     rev: c4654a7e007c9619a5eb63c39a456572a0fa1851  # frozen: 0.38.0
