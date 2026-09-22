@@ -26,6 +26,41 @@ default_stages: [pre-commit]
 exclude: "^docs/conf.py"
 
 repos:
+  # Guard the pins below before any of them run.
+  #
+  # 'pre-commit autoupdate' resolves each repo to its newest tag with no
+  # semantic-version filtering, so a maintainer who pushes a non-release
+  # tag drags every downstream consumer off the release they pinned.
+  # Nothing else here notices: the resulting SHA checks out cleanly, so
+  # every hook still passes and CI stays green. kjanat/actionlint did
+  # exactly this on 2026-09-14, a day after v1.17.0.
+  #
+  # A '# frozen:' label records the ref --freeze resolved, so the whole
+  # label is matched against the shape a release takes: optional 'v',
+  # dot-separated digits, optional numeric revision. That accepts every
+  # form in use here, '0.38.0' and 'v0.11.0.1-1' included, and rejects
+  # word-shaped refs whatever they start with, so 'v1-experiment' and
+  # '2026-research' fail rather than sneaking past a prefix check.
+  #
+  # Pre-release labels such as 'v2.0.0-rc1' are rejected too: nothing
+  # distinguishes '-rc1' from '-experiment' lexically, and adopting a
+  # release candidate unnoticed is the failure this hook exists to stop.
+  #
+  # The trailing '|\s' alternative stops the whitespace quantifier
+  # backtracking onto the separator and flagging a valid label.
+  #
+  # pygrep needs no toolchain and no network, so this runs in the
+  # pre-commit.ci sandbox and stays out of ci.skip. Proving a SHA is a
+  # commit and not a tag object needs the network, so it cannot join in.
+  - repo: local
+    hooks:
+      - id: frozen-rev-is-a-release
+        name: frozen revs name a release
+        language: pygrep
+        # yamllint disable-line rule:line-length
+        entry: '#\s*frozen:\s+(?!v?[0-9]+(\.[0-9]+)*(-[0-9]+)?\s*$|\s)'
+        files: '^\.pre-commit-config\.yaml$'
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c  # frozen: v6.0.0
     hooks:
