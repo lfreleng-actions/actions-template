@@ -306,8 +306,19 @@ repos:
         # already dense shell fragment. ESLint 8 is end-of-life and the
         # rollout upgrades the one repository still on it, so requiring 9
         # removes the whole class of partial support instead.
+        # The config is pinned and lookup disabled. Flat-config
+        # discovery walks UP the directory tree, so a repository that
+        # has package.json but no config of its own lints against
+        # whatever config sits above it, outside the checkout.
+        # Confirmed: a parent-directory config banning 'debugger'
+        # reported no-debugger against a repository containing no
+        # ESLint configuration at all.
+        #
+        # A missing config is caught before ESLint runs, because
+        # --config on an absent file raises a filesystem stack trace
+        # rather than an actionable message.
         # yamllint disable-line rule:line-length
-        entry: bash -c 'if [ ! -f package.json ]; then git ls-files -- "*.js" "*.jsx" "*.mjs" "*.cjs" "*.ts" "*.tsx" "*.mts" "*.cts" | grep -vE "(^|/)(dist|build|coverage|node_modules)/|(^|/)eslint[.]config[.](m|c)?js$" | grep -q . && { echo "package.json is missing but JavaScript/TypeScript sources are still tracked - restore it" >&2; exit 1; }; exit 0; fi; v=$(npx --no-install eslint --version 2>/dev/null | sed "s/^v//; s/[.].*$//"); if [ -z "$v" ]; then echo "eslint not installed - add eslint >=9 to devDependencies" >&2; exit 1; fi; if [ "$v" -lt 9 ]; then echo "eslint $v cannot load a flat config reliably - upgrade to >=9" >&2; exit 1; fi; ESLINT_USE_FLAT_CONFIG=true npx --no-install eslint --fix .'
+        entry: bash -c 'if [ ! -f package.json ]; then git ls-files -- "*.js" "*.jsx" "*.mjs" "*.cjs" "*.ts" "*.tsx" "*.mts" "*.cts" | grep -vE "(^|/)(dist|build|coverage|node_modules)/|(^|/)eslint[.]config[.](m|c)?js$" | grep -q . && ! git ls-files -- "*/package.json" | grep -vE "(^|/)node_modules/" | grep -q . && { echo "package.json is missing but JavaScript/TypeScript sources are still tracked - restore it" >&2; exit 1; }; exit 0; fi; v=$(npx --no-install eslint --version 2>/dev/null | sed "s/^v//; s/[.].*$//"); if [ -z "$v" ]; then echo "eslint not installed - add eslint >=9 to devDependencies" >&2; exit 1; fi; if [ "$v" -lt 9 ]; then echo "eslint $v cannot load a flat config reliably - upgrade to >=9" >&2; exit 1; fi; if [ ! -f eslint.config.mjs ]; then echo "eslint.config.mjs is missing - copy it from actions-template, or ESLint would lint against a config outside this repository" >&2; exit 1; fi; ESLINT_USE_FLAT_CONFIG=true npx --no-install eslint --no-config-lookup --config eslint.config.mjs --fix .'
         language: system
         always_run: true
         pass_filenames: false
@@ -352,28 +363,28 @@ repos:
         # differences unfixed and fail the lint hook below with nothing
         # able to correct them.
         # yamllint disable-line rule:line-length
-        entry: bash -c 'if [ ! -f go.mod ]; then git ls-files -- "*.go" | grep -q . && { echo "go.mod is missing but Go sources are still tracked - restore it" >&2; exit 1; }; exit 0; fi; command -v golangci-lint >/dev/null 2>&1 || { echo "golangci-lint not installed - see https://golangci-lint.run/welcome/install/" >&2; exit 1; }; golangci-lint fmt'
+        entry: bash -c 'if [ ! -f go.mod ]; then git ls-files -- "*.go" | grep -q . && ! git ls-files -- "*/go.mod" | grep -q . && { echo "go.mod is missing but Go sources are still tracked - restore it" >&2; exit 1; }; exit 0; fi; command -v golangci-lint >/dev/null 2>&1 || { echo "golangci-lint not installed - see https://golangci-lint.run/welcome/install/" >&2; exit 1; }; golangci-lint fmt'
         language: system
         always_run: true
         pass_filenames: false
       - id: go-mod-tidy
         name: go mod tidy
         # yamllint disable-line rule:line-length
-        entry: bash -c 'if [ ! -f go.mod ]; then git ls-files -- "*.go" | grep -q . && { echo "go.mod is missing but Go sources are still tracked - restore it" >&2; exit 1; }; exit 0; fi; go mod tidy'
+        entry: bash -c 'if [ ! -f go.mod ]; then git ls-files -- "*.go" | grep -q . && ! git ls-files -- "*/go.mod" | grep -q . && { echo "go.mod is missing but Go sources are still tracked - restore it" >&2; exit 1; }; exit 0; fi; go mod tidy'
         language: system
         always_run: true
         pass_filenames: false
       - id: go-vet
         name: go vet
         # yamllint disable-line rule:line-length
-        entry: bash -c 'if [ ! -f go.mod ]; then git ls-files -- "*.go" | grep -q . && { echo "go.mod is missing but Go sources are still tracked - restore it" >&2; exit 1; }; exit 0; fi; go vet ./...'
+        entry: bash -c 'if [ ! -f go.mod ]; then git ls-files -- "*.go" | grep -q . && ! git ls-files -- "*/go.mod" | grep -q . && { echo "go.mod is missing but Go sources are still tracked - restore it" >&2; exit 1; }; exit 0; fi; go vet ./...'
         language: system
         always_run: true
         pass_filenames: false
       - id: golangci-lint
         name: golangci-lint
         # yamllint disable-line rule:line-length
-        entry: bash -c 'if [ ! -f go.mod ]; then git ls-files -- "*.go" | grep -q . && { echo "go.mod is missing but Go sources are still tracked - restore it" >&2; exit 1; }; exit 0; fi; command -v golangci-lint >/dev/null 2>&1 || { echo "golangci-lint not installed - see https://golangci-lint.run/welcome/install/" >&2; exit 1; }; golangci-lint run --timeout=5m'
+        entry: bash -c 'if [ ! -f go.mod ]; then git ls-files -- "*.go" | grep -q . && ! git ls-files -- "*/go.mod" | grep -q . && { echo "go.mod is missing but Go sources are still tracked - restore it" >&2; exit 1; }; exit 0; fi; command -v golangci-lint >/dev/null 2>&1 || { echo "golangci-lint not installed - see https://golangci-lint.run/welcome/install/" >&2; exit 1; }; golangci-lint run --timeout=5m'
         language: system
         always_run: true
         pass_filenames: false
