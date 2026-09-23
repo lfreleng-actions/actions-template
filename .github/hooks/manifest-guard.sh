@@ -7,8 +7,10 @@
 # Usage: manifest-guard.sh [--list] <manifest> <source-pathspec>...
 #   GUARD_EXCLUDE  optional extended regex of source paths to ignore
 #
-# With --list it prints the tracked sources the root manifest owns, one
-# per line, and exits 0. A formatter needs that list because it rewrites
+# With --list it prints the tracked sources the root manifest owns as a
+# NUL-delimited stream, for `xargs -0`, and exits 0. It is not
+# line-oriented: a caller reading it as lines would split any path
+# containing whitespace. A formatter needs that list because it rewrites
 # files directly: `golangci-lint fmt` walks every Go file beneath the
 # working directory and does not stop at module boundaries, so on a
 # repository holding both a root and a nested module it would reformat
