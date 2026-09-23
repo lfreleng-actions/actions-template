@@ -10,9 +10,10 @@
 // without invoking ESLint, unless lintable sources are still tracked,
 // in which case it fails rather than letting a deleted or unstaged
 // manifest silently disable linting. A manifest tracked in a
-// subdirectory counts: a package workspace is a legitimate layout, so
-// the hook stays inert instead of demanding a root package.json that
-// was never deleted. Where a root package.json is tracked it runs the
+// subdirectory counts, but only for the sources beneath it: a package
+// workspace is a legitimate layout, so the hook stays inert instead of
+// demanding a root package.json that was never deleted, while sources
+// outside any workspace still fail rather than being masked by it. Where a root package.json is tracked it runs the
 // project's own ESLint over the repository, pinned to this file so
 // discovery cannot walk up into a config outside the checkout.
 //

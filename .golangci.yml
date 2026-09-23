@@ -5,21 +5,20 @@
 # golangci-lint configuration, v2 schema.
 #
 # Inert until the repository contains Go code. golangci-lint runs only
-# from the pre-commit hooks, which use always_run with an early go.mod
-# guard. Every test is against the git index rather than the
-# filesystem, so an untracked go.mod sitting on disk cannot satisfy
-# it: a commit carrying sources but not their module file would
-# otherwise pass locally and land a tree nobody else can build.
+# from the pre-commit hooks, which use always_run with an early manifest
+# guard. That guard lives in .github/hooks/manifest-guard.sh and is
+# shared by every language hook. Its tests run against the git index
+# rather than the filesystem, so an untracked go.mod on disk cannot
+# satisfy it: a commit carrying sources but not their module file
+# would otherwise pass locally and land a tree nobody else can build.
 #
-# The guard has three branches and each matters: with no tracked
-# module file and no tracked Go sources the hooks exit 0 without
-# invoking the toolchain, so this configuration is never read; with
-# no tracked module file at the repository root but one tracked in a
-# subdirectory they also exit 0, because a nested module is a
-# legitimate layout that root-level tooling cannot lint anyway; with
-# no tracked module file anywhere but Go sources still tracked they
-# FAIL, because that state means go.mod was deleted or never staged
-# and every Go check would otherwise fall silent.
+# Coverage is decided per source file. A tracked module file in a
+# subdirectory excuses only the sources beneath it, so a repository
+# holding both a nested module and Go sources outside it still fails
+# rather than letting the nested module mask a deleted root go.mod.
+# Where a root go.mod is tracked the hooks run and this configuration
+# applies; where the repository has no Go sources at all they exit 0
+# without invoking the toolchain, and this file is never read.
 #
 # The guard is deliberately not a '\.go$' file matcher. pre-commit drops
 # deleted paths before matching, so a matcher would skip a commit that
