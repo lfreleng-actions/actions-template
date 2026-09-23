@@ -4,8 +4,17 @@
 
 # Decides whether a language's root-level tooling applies to this checkout.
 #
-# Usage: manifest-guard.sh <manifest> <source-pathspec>...
+# Usage: manifest-guard.sh [--list] <manifest> <source-pathspec>...
 #   GUARD_EXCLUDE  optional extended regex of source paths to ignore
+#
+# With --list it prints the tracked sources the root manifest owns, one
+# per line, and exits 0. A formatter needs that list because it rewrites
+# files directly: `golangci-lint fmt` walks every Go file beneath the
+# working directory and does not stop at module boundaries, so on a
+# repository holding both a root and a nested module it would reformat
+# the nested module with the root settings while `go mod tidy` updated
+# only the root, leaving the nested module stale. Passing the owned set
+# explicitly keeps the formatter inside the module it belongs to.
 #
 # Exit codes:
 #   3  a root manifest is tracked and owns at least one source: run the tool
@@ -34,8 +43,14 @@
 
 set -eu
 
+list_only=0
+if [ "${1:-}" = "--list" ]; then
+    list_only=1
+    shift
+fi
+
 if [ "$#" -lt 2 ]; then
-    echo "usage: manifest-guard.sh <manifest> <source-pathspec>..." >&2
+    echo "usage: manifest-guard.sh [--list] <manifest> <source-pathspec>..." >&2
     exit 2
 fi
 
@@ -56,18 +71,25 @@ fi
 dirs=$(git ls-files -- "*/$manifest" | sed "s|/$manifest\$||" || true)
 
 # The first tracked source not sitting under one of those directories.
-unnested=""
+owned=""
 if [ -n "$sources" ]; then
-    unnested=$(printf '%s\n' "$sources" | awk -v dirs="$dirs" '
+    owned=$(printf '%s\n' "$sources" | awk -v dirs="$dirs" '
         BEGIN { n = split(dirs, d, "\n") }
         {
             for (i = 1; i <= n; i++)
                 if (d[i] != "" && index($0, d[i] "/") == 1)
                     next
             print
-            exit
         }')
 fi
+
+if [ "$list_only" = 1 ]; then
+    [ -n "$owned" ] && printf '%s\n' "$owned"
+    exit 0
+fi
+
+# Only the first is needed for the verdict, and it names the offender.
+unnested=$(printf '%s\n' "$owned" | sed -n '1p')
 
 if [ "$root_tracked" = 1 ]; then
     [ -n "$unnested" ] && exit 3

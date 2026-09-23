@@ -352,8 +352,13 @@ repos:
   # could leave stale module requirements or broken packages behind.
   #
   # The guard keys on go.mod, which is the honest test of "is this a Go
-  # project". In a repository without one each hook exits 0 immediately,
-  # so the block stays inert and the toolchain is never required.
+  # project". Without a tracked root go.mod it does not simply exit 0:
+  # it exits 0 only when every tracked Go source sits under a module in
+  # a subdirectory, or when there are no Go sources at all. A tracked
+  # source that no module covers FAILS, which is the safeguard that
+  # catches a deleted or unstaged go.mod, so the toolchain stays
+  # unrequired for non-Go repositories without the deletion case
+  # falling silent.
   #
   # Order is deliberate and each step depends on the one before:
   #   fmt   -- goimports adds and removes imports, changing what the
@@ -382,7 +387,7 @@ repos:
         # differences unfixed and fail the lint hook below with nothing
         # able to correct them.
         # yamllint disable-line rule:line-length
-        entry: bash -c 'sh .github/hooks/manifest-guard.sh go.mod "*.go"; rc=$?; case "$rc" in 3|4) ;; *) exit "$rc";; esac; command -v golangci-lint >/dev/null 2>&1 || { echo "golangci-lint not installed - see https://golangci-lint.run/welcome/install/" >&2; exit 1; }; golangci-lint fmt'
+        entry: bash -c 'sh .github/hooks/manifest-guard.sh go.mod "*.go"; rc=$?; case "$rc" in 3|4) ;; *) exit "$rc";; esac; command -v golangci-lint >/dev/null 2>&1 || { echo "golangci-lint not installed - see https://golangci-lint.run/welcome/install/" >&2; exit 1; }; files=$(sh .github/hooks/manifest-guard.sh --list go.mod "*.go"); [ -n "$files" ] || exit 0; printf '%s\n' "$files" | tr '\n' '\0' | xargs -0 golangci-lint fmt'
         language: system
         always_run: true
         pass_filenames: false
