@@ -17,11 +17,21 @@ ci:
   # using the same pattern: always_run, so a commit deleting sources
   # still triggers them, with an early guard on the project manifest.
   #
-  # Each guard has two branches. With no manifest and no tracked sources
-  # of that language the hook exits 0 without invoking any toolchain.
-  # With no manifest but sources still tracked it FAILS, because that
-  # state means go.mod or package.json was deleted and every check for
-  # that language would otherwise fall silent against a live tree.
+  # Each guard has three branches. With no manifest and no tracked
+  # sources of that language the hook exits 0 without invoking any
+  # toolchain. With no manifest at the repository root but one in a
+  # subdirectory it also exits 0: a nested Go module or a package
+  # workspace is a legitimate layout, not a deletion. With no manifest
+  # anywhere but sources still tracked it FAILS, because that state
+  # means go.mod or package.json was deleted and every check for that
+  # language would otherwise fall silent against a live tree.
+  #
+  # Nested layouts are therefore left uncovered rather than rejected,
+  # which is a deliberate gap. 'go vet ./...' and a root ESLint run
+  # cannot lint a tree whose manifest lives elsewhere, so the honest
+  # choice was between skipping and failing, and failing would block
+  # valid projects on a message telling them to restore a file they
+  # never deleted.
   #
   # A 'files' matcher would look equivalent and be materially weaker:
   # pre-commit drops deleted paths before matching, so a commit that only
