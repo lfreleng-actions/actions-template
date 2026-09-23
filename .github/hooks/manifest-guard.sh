@@ -27,6 +27,14 @@
 #      in a subdirectory, so the root-level hook is inert
 #   1  tracked sources exist that no tracked manifest covers
 #
+# Paths come from git with core.quotePath disabled, because the default
+# C-quotes anything non-ASCII: a tracked tools/café/go.mod would arrive
+# wrapped in quotes and match no prefix, so its sources would be reported
+# as uncovered. A tracked path containing a literal newline is still not
+# supported; git quotes those regardless, and the quoted form matches no
+# prefix, so such a file is reported as uncovered and the hook fails
+# rather than skipping silently.
+#
 # Every test is against the git index rather than the filesystem. A
 # pre-commit hook validates what is being committed, so an untracked
 # manifest sitting on disk must not satisfy it: a commit carrying sources
@@ -58,17 +66,17 @@ manifest=$1
 shift
 
 root_tracked=0
-if git ls-files -- "$manifest" | grep -q .; then
+if git -c core.quotePath=false ls-files -- "$manifest" | grep -q .; then
     root_tracked=1
 fi
 
-sources=$(git ls-files -- "$@")
+sources=$(git -c core.quotePath=false ls-files -- "$@")
 if [ -n "${GUARD_EXCLUDE:-}" ]; then
     sources=$(printf '%s\n' "$sources" | grep -vE "$GUARD_EXCLUDE" || true)
 fi
 
 # Directories holding a tracked manifest below the root.
-dirs=$(git ls-files -- "*/$manifest" | sed "s|/$manifest\$||" || true)
+dirs=$(git -c core.quotePath=false ls-files -- "*/$manifest" | sed "s|/$manifest\$||" || true)
 
 # The first tracked source not sitting under one of those directories.
 owned=""
@@ -84,7 +92,8 @@ if [ -n "$sources" ]; then
 fi
 
 if [ "$list_only" = 1 ]; then
-    [ -n "$owned" ] && printf '%s\n' "$owned"
+    # NUL-delimited so a caller can pipe straight into `xargs -0`.
+    [ -n "$owned" ] && printf '%s\n' "$owned" | tr '\n' '\0'
     exit 0
 fi
 

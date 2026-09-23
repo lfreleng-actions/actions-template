@@ -337,7 +337,7 @@ repos:
         # --config on an absent file raises a filesystem stack trace
         # rather than an actionable message.
         # yamllint disable-line rule:line-length
-        entry: bash -c 'GUARD_EXCLUDE="(^|/)(dist|build|coverage|node_modules)/|(^|/)eslint[.]config[.](m|c)?js$" sh .github/hooks/manifest-guard.sh package.json "*.js" "*.jsx" "*.mjs" "*.cjs" "*.ts" "*.tsx" "*.mts" "*.cts"; rc=$?; case "$rc" in 3|4) ;; *) exit "$rc";; esac; v=$(npx --no-install eslint --version 2>/dev/null | sed "s/^v//; s/[.].*$//"); if [ -z "$v" ]; then echo "eslint not installed - add eslint >=9 to devDependencies" >&2; exit 1; fi; if [ "$v" -lt 9 ]; then echo "eslint $v cannot load a flat config reliably - upgrade to >=9" >&2; exit 1; fi; if ! git ls-files -- eslint.config.mjs | grep -q .; then echo "eslint.config.mjs is not tracked - copy it from actions-template, or ESLint would lint against a config outside this repository" >&2; exit 1; fi; ESLINT_USE_FLAT_CONFIG=true npx --no-install eslint --no-config-lookup --config eslint.config.mjs --fix .'
+        entry: bash -c 'GUARD_EXCLUDE="(^|/)(dist|build|coverage|node_modules)/|(^|/)eslint[.]config[.](m|c)?js$" sh .github/hooks/manifest-guard.sh package.json "*.js" "*.jsx" "*.mjs" "*.cjs" "*.ts" "*.tsx" "*.mts" "*.cts"; rc=$?; case "$rc" in 3|4) ;; *) exit "$rc";; esac; v=$(npx --no-install eslint --version 2>/dev/null | sed "s/^v//; s/[.].*$//"); if [ -z "$v" ]; then echo "eslint not installed - add eslint >=9 to devDependencies" >&2; exit 1; fi; if [ "$v" -lt 9 ]; then echo "eslint $v cannot load a flat config reliably - upgrade to >=9" >&2; exit 1; fi; if ! git ls-files -- eslint.config.mjs | grep -q .; then echo "eslint.config.mjs is not tracked - copy it from actions-template, or ESLint would lint against a config outside this repository" >&2; exit 1; fi; { sh .github/hooks/manifest-guard.sh --list package.json "*.js" "*.jsx" "*.mjs" "*.cjs" "*.ts" "*.tsx" "*.mts" "*.cts"; printf 'eslint.config.mjs\0'; } | xargs -0 env ESLINT_USE_FLAT_CONFIG=true npx --no-install eslint --no-config-lookup --config eslint.config.mjs --fix'
         language: system
         always_run: true
         pass_filenames: false
@@ -387,7 +387,7 @@ repos:
         # differences unfixed and fail the lint hook below with nothing
         # able to correct them.
         # yamllint disable-line rule:line-length
-        entry: bash -c 'sh .github/hooks/manifest-guard.sh go.mod "*.go"; rc=$?; case "$rc" in 3|4) ;; *) exit "$rc";; esac; command -v golangci-lint >/dev/null 2>&1 || { echo "golangci-lint not installed - see https://golangci-lint.run/welcome/install/" >&2; exit 1; }; files=$(sh .github/hooks/manifest-guard.sh --list go.mod "*.go"); [ -n "$files" ] || exit 0; printf '%s\n' "$files" | tr '\n' '\0' | xargs -0 golangci-lint fmt'
+        entry: bash -c 'sh .github/hooks/manifest-guard.sh go.mod "*.go"; rc=$?; case "$rc" in 3) ;; 4) exit 0;; *) exit "$rc";; esac; command -v golangci-lint >/dev/null 2>&1 || { echo "golangci-lint not installed - see https://golangci-lint.run/welcome/install/" >&2; exit 1; }; sh .github/hooks/manifest-guard.sh --list go.mod "*.go" | xargs -0 golangci-lint fmt'
         language: system
         always_run: true
         pass_filenames: false
