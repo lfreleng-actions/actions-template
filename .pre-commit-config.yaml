@@ -187,10 +187,30 @@ repos:
   # with zizmor's self-repository audit. A bare '$/' (an action at the
   # repository root) is still rejected; .github/actionlint.yaml carries
   # a path-scoped ignore for that case.
+  #
+  # The '-shellcheck' variant, not the plain 'actionlint' hook. Both run
+  # the same linter; they differ only in where the ShellCheck used for
+  # 'run:' blocks comes from. The plain hook builds into an isolated
+  # GOPATH and picks up ShellCheck only if one already happens to be on
+  # PATH, which made the check environment-dependent: a contributor with
+  # ShellCheck installed saw findings that pre-commit.ci, whose
+  # shellcheck-py hook lives in its own isolated environment, did not.
+  # CI was the more permissive of the two, which is the wrong way round.
+  # This variant supplies its own Go build of ShellCheck, so 'run:'
+  # blocks are checked identically everywhere.
+  #
+  # It does not replace the shellcheck-py hook above: that covers '.sh'
+  # files, this covers shell embedded in workflows. The two carry
+  # separate ShellCheck versions, so a finding may appear under one
+  # before the other.
+  #
+  # Not added to ci.skip: language: golang is supported on pre-commit.ci,
+  # which builds a 'golang@system' environment for the gitleaks hook
+  # above in the same way.
   - repo: https://github.com/kjanat/actionlint
     rev: 08bb2c4f0d039744455b87aef1c647fb8b66d37b  # frozen: v1.17.0
     hooks:
-      - id: actionlint
+      - id: actionlint-shellcheck
 
   # Check for misspellings in documentation files
   - repo: https://github.com/codespell-project/codespell
