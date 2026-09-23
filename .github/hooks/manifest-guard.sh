@@ -67,6 +67,22 @@ fi
 manifest=$1
 shift
 
+# core.quotePath=false only stops git quoting non-ASCII bytes. A path
+# holding a double quote, backslash, tab or newline is C-quoted regardless,
+# and the quoted form matches no prefix and cannot be opened by a formatter.
+# NUL-delimited matching would handle these, but the awk available on macOS
+# has no NUL record separator and POSIX sh has no `read -d`, so there is no
+# portable way to compare them correctly. Refuse them with a diagnostic
+# instead of proceeding on paths that cannot be handled.
+quoted=$(git -c core.quotePath=false ls-files -- "$manifest" "*/$manifest" "$@" \
+    | grep -m1 '^"' || true)
+if [ -n "$quoted" ]; then
+    echo "manifest-guard: cannot handle the tracked path $quoted" >&2
+    echo "  rename it: paths containing a quote, backslash, tab or newline" >&2
+    echo "  are quoted by git and cannot be matched or passed on safely" >&2
+    exit 1
+fi
+
 root_tracked=0
 if git -c core.quotePath=false ls-files -- "$manifest" | grep -q .; then
     root_tracked=1
@@ -95,7 +111,9 @@ fi
 
 if [ "$list_only" = 1 ]; then
     # NUL-delimited so a caller can pipe straight into `xargs -0`.
-    [ -n "$owned" ] && printf '%s\n' "$owned" | tr '\n' '\0'
+    # './' prefix: a tracked source such as -flag.go would otherwise be
+    # read as an option by the tool xargs hands it to.
+    [ -n "$owned" ] && printf '%s\n' "$owned" | sed 's|^|./|' | tr '\n' '\0'
     exit 0
 fi
 
