@@ -8,9 +8,14 @@
 #   GUARD_EXCLUDE  optional extended regex of source paths to ignore
 #
 # Exit codes:
-#   3  a root manifest is tracked; the caller should run its tool
-#   0  the language is absent, or every tracked source lives under a
-#      manifest in a subdirectory, so the root-level hook is inert
+#   3  a root manifest is tracked and owns at least one source: run the tool
+#   4  a root manifest is tracked but owns no source. Tools that only touch
+#      the manifest, or that are no-ops without sources, should still run;
+#      analysis tools must skip, because `go vet ./...` exits 1 and
+#      `golangci-lint run` exits 5 on a module with nothing to analyse, which
+#      would block the very commit that removes the last Go file.
+#   0  the language is absent, or every tracked source lives under a manifest
+#      in a subdirectory, so the root-level hook is inert
 #   1  tracked sources exist that no tracked manifest covers
 #
 # Every test is against the git index rather than the filesystem. A
@@ -19,11 +24,13 @@
 # but not their manifest would otherwise pass locally and land a tree
 # nobody else can build.
 #
-# Coverage is checked per source file rather than by asking whether any
-# nested manifest exists anywhere. A repository can hold both a nested
-# module and sources outside it, and treating the nested manifest as
-# blanket permission would let deletion of the root manifest pass while
-# those orphaned sources went unlinted.
+# One computation serves both questions. "Unnested" below is the set of
+# tracked sources that do not sit under a manifest in a subdirectory. When a
+# root manifest is tracked those are the sources it owns; when none is
+# tracked they are sources no manifest covers at all. Deciding coverage per
+# file, rather than asking whether a nested manifest exists anywhere, is what
+# stops a nested module masking deletion of the root manifest while sources
+# outside it go unlinted.
 
 set -eu
 
@@ -35,9 +42,9 @@ fi
 manifest=$1
 shift
 
-# A tracked root manifest means the root tooling applies.
+root_tracked=0
 if git ls-files -- "$manifest" | grep -q .; then
-    exit 3
+    root_tracked=1
 fi
 
 sources=$(git ls-files -- "$@")
@@ -45,25 +52,33 @@ if [ -n "${GUARD_EXCLUDE:-}" ]; then
     sources=$(printf '%s\n' "$sources" | grep -vE "$GUARD_EXCLUDE" || true)
 fi
 
-# No sources of this language: genuinely not that kind of project.
-[ -n "$sources" ] || exit 0
-
 # Directories holding a tracked manifest below the root.
 dirs=$(git ls-files -- "*/$manifest" | sed "s|/$manifest\$||" || true)
 
 # The first tracked source not sitting under one of those directories.
-orphan=$(printf '%s\n' "$sources" | awk -v dirs="$dirs" '
-    BEGIN { n = split(dirs, d, "\n") }
-    {
-        for (i = 1; i <= n; i++)
-            if (d[i] != "" && index($0, d[i] "/") == 1)
-                next
-        print
-        exit
-    }')
+unnested=""
+if [ -n "$sources" ]; then
+    unnested=$(printf '%s\n' "$sources" | awk -v dirs="$dirs" '
+        BEGIN { n = split(dirs, d, "\n") }
+        {
+            for (i = 1; i <= n; i++)
+                if (d[i] != "" && index($0, d[i] "/") == 1)
+                    next
+            print
+            exit
+        }')
+fi
 
-if [ -n "$orphan" ]; then
-    echo "no tracked $manifest covers $orphan - restore or stage $manifest" >&2
+if [ "$root_tracked" = 1 ]; then
+    [ -n "$unnested" ] && exit 3
+    exit 4
+fi
+
+# No root manifest from here on.
+[ -n "$sources" ] || exit 0
+
+if [ -n "$unnested" ]; then
+    echo "no tracked $manifest covers $unnested - restore or stage $manifest" >&2
     exit 1
 fi
 

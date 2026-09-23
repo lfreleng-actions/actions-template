@@ -20,10 +20,15 @@
 // ESLint 9 made flat config the default while still honouring
 // ESLINT_USE_FLAT_CONFIG=false to load a legacy .eslintrc; ESLint 10
 // removes the legacy format entirely. The hook forces flat-config mode
-// so an inherited environment variable cannot bypass this file. A
-// repository running the hook without a config at its root fails with
-// "couldn't find an eslint.config file", so this file ships with the
-// template to make a new project lint from its first commit.
+// so an inherited environment variable cannot bypass this file.
+//
+// The hook no longer relies on ESLint's own discovery error. It checks
+// that this file is tracked and passes it explicitly with
+// --no-config-lookup, because flat-config discovery walks up the
+// directory tree and would otherwise lint against a config outside the
+// checkout, and because --config naming an absent file raises a
+// filesystem stack trace rather than an actionable message. The file
+// ships with the template so a new project lints from its first commit.
 //
 // Adopting repositories need eslint, @eslint/js, typescript-eslint,
 // typescript and globals in devDependencies; the hook runs the project's
