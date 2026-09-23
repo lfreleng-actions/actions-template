@@ -4,14 +4,17 @@
 // ESLint flat configuration.
 //
 // Inert until the repository contains JavaScript or TypeScript. The
-// pre-commit hook runs repository-wide and guards on package.json. With
-// no manifest it exits 0 without invoking ESLint, unless lintable
-// sources are still tracked, in which case it fails rather than letting
-// a deleted manifest silently disable linting. A manifest in a
+// pre-commit hook runs repository-wide and guards on package.json,
+// testing the git index rather than the filesystem so an untracked
+// manifest cannot satisfy it. With no tracked manifest it exits 0
+// without invoking ESLint, unless lintable sources are still tracked,
+// in which case it fails rather than letting a deleted or unstaged
+// manifest silently disable linting. A manifest tracked in a
 // subdirectory counts: a package workspace is a legitimate layout, so
 // the hook stays inert instead of demanding a root package.json that
-// was never deleted. Where a root package.json does exist it runs the
-// project's own ESLint over the repository.
+// was never deleted. Where a root package.json is tracked it runs the
+// project's own ESLint over the repository, pinned to this file so
+// discovery cannot walk up into a config outside the checkout.
 //
 // ESLint 9 made flat config the default while still honouring
 // ESLINT_USE_FLAT_CONFIG=false to load a legacy .eslintrc; ESLint 10
