@@ -113,8 +113,10 @@ repos:
   # distinguishes '-rc1' from '-experiment' lexically, and adopting a
   # release candidate unnoticed is the failure this hook exists to stop.
   #
-  # The trailing '|\s' alternative stops the whitespace quantifier
-  # backtracking onto the separator and flagging a valid label.
+  # The match is anchored to 'rev:' lines, so prose that mentions a
+  # frozen label, such as this comment, is never checked. The whitespace
+  # after the colon sits inside the negative lookahead, so a label that
+  # is empty or missing its separator is flagged, not skipped.
   #
   # pygrep needs no toolchain and no network, so this runs in the
   # pre-commit.ci sandbox and stays out of ci.skip. Proving a SHA is a
@@ -125,7 +127,7 @@ repos:
         name: frozen revs name a release
         language: pygrep
         # yamllint disable-line rule:line-length
-        entry: '#\s*frozen:\s+(?!v?[0-9]+(\.[0-9]+)*(-[0-9]+)?\s*$|\s)'
+        entry: '^\s*rev:\s*\S+\s+#\s*frozen:(?!\s+v?[0-9]+(\.[0-9]+)*(-[0-9]+)?\s*$)'
         files: '^\.pre-commit-config\.yaml$'
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
