@@ -12,13 +12,15 @@ paths:
       # GitHub introduced the self-repository 'uses: $/...' syntax in
       # July 2026, and zizmor's self-repository audit (v1.30.0+) reports
       # the older workspace-relative './' form as a finding. This fork of
-      # actionlint understands '$/{path}', but deliberately rejects a
-      # bare '$/' because actions/runner's TryParseSelfRepository helper
-      # refuses an empty path. GitHub's server-side workflow parser does
-      # accept it: an action at the repository root has no {path}, and a
-      # bare '$/' resolves and runs. This ignore holds the line for that
-      # one case, which applies to every action living at its repository
-      # root.
+      # actionlint (v1.17.0) understands '$/{path}' but rejects a bare
+      # '$/', copying an empty-path check from actions/runner#4457 that
+      # actions/runner#4669 has since removed. GitHub accepts and runs a
+      # bare '$/' for an action at the repository root.
+      #
+      # The fork returns before loading action.yaml, so ignoring this
+      # also skips input and output checks for those steps.
+      # kjanat/actionlint#200 fixes it; drop this ignore when a release
+      # containing it is pinned (lfreleng-actions/actions-template#253).
       #
       # Note 'path is missing' rather than upstream v1.7.12's 'ref is
       # missing': this fork reports the bare case differently. The
