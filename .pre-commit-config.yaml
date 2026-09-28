@@ -113,8 +113,9 @@ repos:
   # distinguishes '-rc1' from '-experiment' lexically, and adopting a
   # release candidate unnoticed is the failure this hook exists to stop.
   #
-  # Matching is anchored to 'rev:' lines, so prose such as this comment
-  # is never checked, and an empty or unspaced label is flagged.
+  # Matching is anchored to 'rev:' lines with horizontal whitespace only,
+  # so prose is never checked, even on the next line, and an empty or
+  # unspaced label is flagged.
   #
   # pygrep needs no toolchain or network, so this runs on pre-commit.ci.
   # Each rev is the SHA '--freeze' writes: for an annotated tag, the tag
@@ -125,7 +126,7 @@ repos:
         name: frozen revs name a release
         language: pygrep
         # yamllint disable-line rule:line-length
-        entry: '^\s*rev:\s*\S+\s+#\s*frozen:(?!\s+v?[0-9]+(\.[0-9]+)*(-[0-9]+)?\s*$)'
+        entry: '^[ \t]*rev:[ \t]*\S+[ \t]+#[ \t]*frozen:(?![ \t]+v?[0-9]+(\.[0-9]+)*(-[0-9]+)?[ \t]*$)'
         files: '^\.pre-commit-config\.yaml$'
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
