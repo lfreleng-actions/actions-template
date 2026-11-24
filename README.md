@@ -16,18 +16,24 @@ This is a template for the other actions in this GitHub organisation.
 
 ## Usage Example
 
-<!-- markdownlint-disable MD046 -->
+<!-- markdownlint-disable MD013 MD046 -->
 
 ```yaml
 steps:
   - name: "Action template"
     id: action-template
-    uses: lfreleng-actions/actions-template@main
+    # yamllint disable-line rule:line-length
+    uses: lfreleng-actions/actions-template@017a83475880686ef615160f7afdeccaf063281c  # v0.3.4
     with:
       input: "placeholder"
 ```
 
-<!-- markdownlint-enable MD046 -->
+<!-- markdownlint-enable MD013 MD046 -->
+
+Pin to the commit SHA of a published release, with its tag in a
+comment; never to a branch, or to an annotated tag object's SHA. A new
+action has no release until its first tag, which Release Drafter
+numbers `v0.0.1`; pin to that release once it exists.
 
 ## Inputs
 
