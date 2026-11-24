@@ -76,7 +76,7 @@ types=Fix,Feat,Chore,Docs,Style,Refactor,Perf,Test,Revert,CI,Build
 
 # A DCO trailer cannot be wrapped, and contrib-body-requires-signed-off-by
 # makes one mandatory, so a long identity would leave an author unable to
-# satisfy both rules. The pre-commit.ci sign-off is already 74 characters.
+# satisfy both rules.
 #
 # This waives B1 for commits carrying such a trailer. [ignore-body-lines]
 # cannot be used here: it removes matching lines before any rule runs, so

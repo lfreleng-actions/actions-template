@@ -2,88 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2025 The Linux Foundation
 
-ci:
-  autofix_prs: false
-  # pre-commit.ci sandbox prevents network calls; disable gha-workflow-linter.
-  # aislop also runs engines that can call the network at scan time
-  # (dependency audits), so it cannot run in the sandbox either.
-  #
-  # The Go hooks below use language: system and need a Go toolchain plus
-  # golangci-lint on PATH; the eslint hook needs the project's own
-  # node_modules. The sandbox provides none of these, so they are skipped
-  # here.
-  #
-  # They remain inert in repositories without Go or JavaScript, all five
-  # using the same pattern: always_run, so a commit deleting sources
-  # still triggers them, with an early guard on the project manifest.
-  #
-  # The decision lives in .github/hooks/manifest-guard.sh, shared by all
-  # five hooks rather than repeated as five copies of dense shell. It
-  # returns 3 when a root manifest is tracked and owns at least one
-  # source, 4 when a root manifest is tracked but owns none, 0 when the
-  # hook is inert, and 1 when the state is broken.
-  #
-  # The hooks below disagree deliberately about 4, so it is not a
-  # synonym for either neighbour. go mod tidy and ESLint still run:
-  # tidy is precisely what reconciles the requirements left behind when
-  # the last source goes, and ESLint is handed the config so a
-  # config-only change stays validated. go format, go vet and
-  # golangci-lint run skip, because there is nothing for them to act on
-  # and the last two exit non-zero on a module with no packages, which
-  # would block the commit that removes the final Go file.
-  #
-  # Every test is against the git index, not the filesystem, because a
-  # pre-commit hook validates what is being committed. An untracked
-  # manifest sitting on disk must not satisfy the guard, or a commit
-  # carrying sources but not their manifest passes locally and lands a
-  # tree nobody else can build.
-  #
-  # Coverage is decided per source file, not by asking whether a nested
-  # manifest exists somewhere. A repository can hold both a nested
-  # module and sources outside it, and treating one nested manifest as
-  # blanket permission would let deletion of the root manifest pass
-  # while those orphaned sources went unlinted. The guard names the
-  # first uncovered file, so the error says which source has no
-  # manifest rather than merely that one is missing.
-  #
-  # Nested layouts are therefore left uncovered rather than rejected,
-  # which is a deliberate gap. 'go vet ./...' and a root ESLint run
-  # cannot lint a tree whose manifest lives elsewhere, so the honest
-  # choice was between skipping and failing, and failing would block
-  # valid projects on a message telling them to restore a file they
-  # never deleted.
-  #
-  # A 'files' matcher would look equivalent and be materially weaker:
-  # pre-commit drops deleted paths before matching, so a commit that only
-  # removes sources would run nothing at all.
-  #
-  # Note that skipping them leaves these checks developer-side only. No
-  # reusable workflow currently runs them: go-audit-action covers
-  # govulncheck, gosec and staticcheck, which is a security audit rather
-  # than a lint, and of the organisation's Go repositories only
-  # version-extract-action invokes anything equivalent from a workflow.
-  # Server-side enforcement for hooks the sandbox cannot run is tracked in
-  # lfreleng-actions/.github#179, which proposes a generic-workflows
-  # linting workflow that installs project dependencies first. Until that
-  # lands, treat this list as a known enforcement gap and not as a
-  # delegation to some workflow that already exists.
-  skip:
-    - gha-workflow-linter
-    - aislop
-    - eslint
-    - go-fmt
-    - go-vet
-    - go-mod-tidy
-    - golangci-lint
-  autofix_commit_msg: |
-    Chore: Pre-commit autofixes
-
-    Signed-off-by: pre-commit-ci[bot] <pre-commit-ci@users.noreply.github.com>
-  autoupdate_commit_msg: |
-    Chore: Pre-commit autoupdate
-
-    Signed-off-by: pre-commit-ci[bot] <pre-commit-ci@users.noreply.github.com>
-
 # gitlint declares stages: [commit-msg]; without installing that hook
 # type it never runs. Hooks that declare no stage would otherwise run
 # again at commit-msg, so confine them to pre-commit.
@@ -117,7 +35,8 @@ repos:
   # so prose is never checked, even on the next line, and an empty or
   # unspaced label is flagged.
   #
-  # pygrep needs no toolchain or network, so this runs on pre-commit.ci.
+  # pygrep needs no toolchain or network, so this runs wherever the
+  # hooks do.
   # Each rev is the SHA '--freeze' writes: for an annotated tag, the tag
   # object, not its commit; a commit would be reverted on autoupdate.
   - repo: local
@@ -224,20 +143,16 @@ repos:
   # 'run:' blocks comes from. The plain hook builds into an isolated
   # GOPATH and picks up ShellCheck only if one already happens to be on
   # PATH, which made the check environment-dependent: a contributor with
-  # ShellCheck installed saw findings that pre-commit.ci, whose
-  # shellcheck-py hook lives in its own isolated environment, did not.
-  # CI was the more permissive of the two, which is the wrong way round.
-  # This variant supplies its own Go build of ShellCheck, so 'run:'
-  # blocks are checked identically everywhere.
+  # ShellCheck installed saw findings that a run without it did not,
+  # because the shellcheck-py hook above lives in its own isolated
+  # environment, out of actionlint's reach. This variant supplies its
+  # own Go build of ShellCheck, so 'run:' blocks are checked identically
+  # everywhere.
   #
   # It does not replace the shellcheck-py hook above: that covers '.sh'
   # files, this covers shell embedded in workflows. The two carry
   # separate ShellCheck versions, so a finding may appear under one
   # before the other.
-  #
-  # Not added to ci.skip: language: golang is supported on pre-commit.ci,
-  # which builds a 'golang@system' environment for the gitleaks hook
-  # above in the same way.
   - repo: https://github.com/kjanat/actionlint
     rev: 1a9278318c43b72cdf644214128fb0786d210147  # frozen: v1.17
     hooks:
@@ -309,8 +224,8 @@ repos:
   # resolution working and keeps versions declared once, in package.json,
   # instead of duplicated here.
   #
-  # Consequently this needs node_modules present, which the pre-commit.ci
-  # sandbox does not install, so it appears in the ci.skip list above.
+  # Consequently this needs the project's node_modules installed wherever
+  # it runs, which leaves it developer-side only; see the Go hooks below.
   - repo: local
     hooks:
       - id: eslint
@@ -371,6 +286,25 @@ repos:
   # unrequired for non-Go repositories without the deletion case
   # falling silent.
   #
+  # These four hooks and the ESLint hook above share the guard in
+  # .github/hooks/manifest-guard.sh rather than five copies of dense
+  # shell; its header documents the exit codes. They disagree
+  # deliberately about exit 4, a tracked root manifest that owns no
+  # source. go mod tidy and ESLint still run: tidy is precisely what
+  # reconciles the requirements left behind when the last source goes,
+  # and ESLint is handed the config so a config-only change stays
+  # validated. go format, go vet and golangci-lint skip, because there
+  # is nothing for them to act on and the last two exit non-zero on a
+  # module with no packages, which would block the commit that removes
+  # the final Go file.
+  #
+  # Nested layouts are left uncovered rather than rejected, which is a
+  # deliberate gap. 'go vet ./...' and a root ESLint run cannot lint a
+  # tree whose manifest lives elsewhere, so the honest choice was
+  # between skipping and failing, and failing would block valid
+  # projects on a message telling them to restore a file they never
+  # deleted.
+  #
   # Order is deliberate and each step depends on the one before:
   #   fmt   -- goimports adds and removes imports, changing what the
   #            module graph needs
@@ -383,8 +317,17 @@ repos:
   # language: system is deliberate. Pinning a Go toolchain per hook would
   # duplicate the version already declared in go.mod and drift from it;
   # using the installed toolchain keeps one source of truth. The cost is
-  # that these cannot run in the pre-commit.ci sandbox, hence the ci.skip
-  # entries above.
+  # that these hooks, like the ESLint hook above, run only where that
+  # toolchain is installed.
+  #
+  # In practice that leaves them developer-side only. No reusable
+  # workflow currently runs them: go-audit-action covers govulncheck,
+  # gosec and staticcheck, which is a security audit rather than a lint,
+  # and of the organisation's Go repositories only version-extract-action
+  # invokes anything equivalent from a workflow. Server-side enforcement
+  # is tracked in lfreleng-actions/.github#179. Until that lands, treat
+  # these hooks as a known enforcement gap and not as a delegation to
+  # some workflow that already exists.
   #
   # golangci-lint fails loudly when absent rather than passing silently: a
   # linter that quietly does nothing is worse than one that is missing.
