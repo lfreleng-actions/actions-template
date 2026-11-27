@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 The Linux Foundation
 
-# Tests the scripts the pre-commit hooks call. pre-commit.ci skips the
+# Tests the scripts the pre-commit hooks call. No workflow runs the
 # hooks that use them, so they otherwise run only on contributors'
 # machines, macOS among them, whose awk differs from Linux's.
 name: "Test hook scripts 🪝"
